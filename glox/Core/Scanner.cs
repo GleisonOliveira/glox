@@ -1,14 +1,5 @@
 ﻿using glox.Enums;
-using glox.Exceptions;
-using glox.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace glox.Core
 {
@@ -22,7 +13,7 @@ namespace glox.Core
         private int _current = 0;
         private int _line = 1;
 
-        private readonly ImmutableDictionary<char, TokenType> _simpleTypes = ImmutableDictionary.CreateRange([
+        private readonly ImmutableDictionary<char, TokenType> _simpleTypes = ImmutableDictionary.CreateRange(new[]{
             KeyValuePair.Create('(', TokenType.LEFT_PAREN),
             KeyValuePair.Create(')', TokenType.RIGHT_PAREN),
             KeyValuePair.Create('{', TokenType.LEFT_BRACE),
@@ -34,14 +25,14 @@ namespace glox.Core
             KeyValuePair.Create(';', TokenType.SEMICOLON),
             KeyValuePair.Create('*', TokenType.STAR),
 
-        ]);
+        });
 
-        private readonly ImmutableDictionary<char, (char match, TokenType trueValue, TokenType falseValue)> _combinationTypes = ImmutableDictionary.CreateRange([
+        private readonly ImmutableDictionary<char, (char match, TokenType trueValue, TokenType falseValue)> _combinationTypes = ImmutableDictionary.CreateRange(new[]{
             KeyValuePair.Create('!', ('=', TokenType.BANG_EQUAL, TokenType.BANG)),
             KeyValuePair.Create('=', ('=', TokenType.EQUAL_EQUAL, TokenType.EQUAL)),
             KeyValuePair.Create('<', ('=', TokenType.LESS_EQUAL, TokenType.LESS)),
             KeyValuePair.Create('>', ('=', TokenType.GREATER_EQUAL, TokenType.GREATER)),
-        ]);
+        });
 
         public Scanner(string source)
         {
