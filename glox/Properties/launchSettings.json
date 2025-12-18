@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "glox": {
+      "commandName": "Project",
+      "commandLineArgs": "file.glox"
+    }
+  }
+}
