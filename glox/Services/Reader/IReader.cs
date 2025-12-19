@@ -1,7 +1,7 @@
 ﻿using glox.Enums;
 using glox.Core;
 
-namespace glox.Services
+namespace glox.Services.Reader
 {
     interface IReader
     {

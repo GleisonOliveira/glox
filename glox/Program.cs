@@ -1,9 +1,10 @@
 ﻿using glox.Enums;
 using glox.Exceptions;
-using glox.Services;
 using glox.Services.Error;
 using glox.Services.Reader;
-using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("glox.Tests")]
 
 namespace glox
 {
