@@ -1,0 +1,6 @@
+class Glox{
+    function test(){
+        var text = "esse é um texto";
+        var text = 'esse é um texto;
+    }
+}

@@ -1,0 +1,5 @@
+class Glox{
+    function test(){
+        var number = 123  a      ;
+    }
+}

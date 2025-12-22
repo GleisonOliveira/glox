@@ -1,11 +1,13 @@
 ﻿using glox.Enums;
+using glox.Records;
 using System.Collections.Immutable;
+using System.Globalization;
 
 namespace glox.Core
 {
     internal sealed class Scanner
     {
-        List<string> errors { get; init; }
+        public List<string> Errors { get; init; }
 
         private readonly List<Token> tokens = new List<Token>();
         private readonly string _source;
@@ -13,25 +15,25 @@ namespace glox.Core
         private int _current = 0;
         private int _line = 1;
 
-        private readonly ImmutableDictionary<char, TokenType> _simpleTypes = ImmutableDictionary.CreateRange(new[]{
-            KeyValuePair.Create('(', TokenType.LEFT_PAREN),
-            KeyValuePair.Create(')', TokenType.RIGHT_PAREN),
-            KeyValuePair.Create('{', TokenType.LEFT_BRACE),
-            KeyValuePair.Create('}', TokenType.RIGHT_BRACE),
-            KeyValuePair.Create(',', TokenType.COMMA),
-            KeyValuePair.Create('.', TokenType.DOT),
-            KeyValuePair.Create('-', TokenType.MINUS),
-            KeyValuePair.Create('+', TokenType.PLUS),
-            KeyValuePair.Create(';', TokenType.SEMICOLON),
-            KeyValuePair.Create('*', TokenType.STAR),
+        private readonly ImmutableDictionary<SpecialChar, TokenType> _simpleTypes = ImmutableDictionary.CreateRange(new[]{
+            KeyValuePair.Create(SpecialChar.LEFT_PAREN, TokenType.LEFT_PAREN),
+            KeyValuePair.Create(SpecialChar.RIGHT_PAREN, TokenType.RIGHT_PAREN),
+            KeyValuePair.Create(SpecialChar.LEFT_BRACE, TokenType.LEFT_BRACE),
+            KeyValuePair.Create(SpecialChar.RIGHT_BRACE, TokenType.RIGHT_BRACE),
+            KeyValuePair.Create(SpecialChar.COMMA, TokenType.COMMA),
+            KeyValuePair.Create(SpecialChar.DOT, TokenType.DOT),
+            KeyValuePair.Create(SpecialChar.MINUS, TokenType.MINUS),
+            KeyValuePair.Create(SpecialChar.PLUS, TokenType.PLUS),
+            KeyValuePair.Create(SpecialChar.SEMICOLON, TokenType.SEMICOLON),
+            KeyValuePair.Create(SpecialChar.STAR, TokenType.STAR),
 
         });
 
-        private readonly ImmutableDictionary<char, (char match, TokenType trueValue, TokenType falseValue)> _combinationTypes = ImmutableDictionary.CreateRange(new[]{
-            KeyValuePair.Create('!', ('=', TokenType.BANG_EQUAL, TokenType.BANG)),
-            KeyValuePair.Create('=', ('=', TokenType.EQUAL_EQUAL, TokenType.EQUAL)),
-            KeyValuePair.Create('<', ('=', TokenType.LESS_EQUAL, TokenType.LESS)),
-            KeyValuePair.Create('>', ('=', TokenType.GREATER_EQUAL, TokenType.GREATER)),
+        private readonly ImmutableDictionary<SpecialChar, (SpecialChar match, TokenType trueValue, TokenType falseValue)> _combinationTypes = ImmutableDictionary.CreateRange(new[]{
+            KeyValuePair.Create(SpecialChar.BANG, (SpecialChar.EQUAL, TokenType.BANG_EQUAL, TokenType.BANG)),
+            KeyValuePair.Create(SpecialChar.EQUAL, (SpecialChar.EQUAL, TokenType.EQUAL_EQUAL, TokenType.EQUAL)),
+            KeyValuePair.Create(SpecialChar.LESS, (SpecialChar.EQUAL, TokenType.LESS_EQUAL, TokenType.LESS)),
+            KeyValuePair.Create(SpecialChar.GREATER, (SpecialChar.EQUAL, TokenType.GREATER_EQUAL, TokenType.GREATER)),
         });
 
         private readonly ImmutableDictionary<string, TokenType> _identifierTypes = ImmutableDictionary.CreateRange(new[]{
@@ -59,7 +61,7 @@ namespace glox.Core
 
         public Scanner(string source)
         {
-            errors = new List<string>();
+            Errors = new List<string>();
             _source = source;
         }
 
@@ -72,9 +74,16 @@ namespace glox.Core
             while (!IsAtEnd())
             {
                 _start = _current;
-                char c = Next();
+                char c = Peek();
+
+                if (c == (char)SpecialChar.NULL)
+                {
+                    break;
+                }
 
                 ProcessToken(c);
+
+                Next();
             }
 
             tokens.Add(new Token(TokenType.EOF, "", null, _line));
@@ -104,7 +113,7 @@ namespace glox.Core
                     // if has two slashes, then is a comment, iterate over the line until the end of line or end of file
                     if (Match('/'))
                     {
-                        while (Peek() != '\n' && !IsAtEnd()) Next();
+                        while (Peek() != (char)(char)SpecialChar.BREAKLINE && !IsAtEnd()) Next();
                     }
                     else if (Match('*'))
                     {
@@ -114,11 +123,11 @@ namespace glox.Core
 
                             if (IsAtEnd())
                             {
-                                errors.Add($"Invalid comment termination on line {_line}");
+                                Errors.Add($"Invalid comment termination on line {_line}");
                                 break;
                             }
 
-                            if (c == '\n')
+                            if (c == (char)SpecialChar.BREAKLINE)
                             {
                                 _line++;
                                 continue;
@@ -135,22 +144,24 @@ namespace glox.Core
                         AddToken(TokenType.SLASH);
                     }
                     break;
-                case ' ':
+                case (char)SpecialChar.SPACE:
                 case '\r':
                 case '\t':
                     // Ignore whitespace.
                     break;
-                case '\n':
+                case (char)SpecialChar.BREAKLINE:
                     _line++;
                     break;
                 case '"':
-                    AddStringToken();
+                    AddStringToken('"');
+
                     break;
                 case '\'':
                     AddStringToken('\'');
+
                     break;
                 default:
-                    if (char.IsAsciiDigit(c))
+                    if (char.IsDigit(c))
                     {
                         AddNumberToken();
                     }
@@ -160,7 +171,7 @@ namespace glox.Core
                     }
                     else
                     {
-                        errors.Add($"Invalid character '{c}' at line '{_line}'");
+                        Errors.Add($"Invalid character '{c}' at line '{_line}'");
                     }
                     break;
             }
@@ -174,9 +185,9 @@ namespace glox.Core
         /// <returns></returns>
         private bool AddSimpleTokenIfMatch(char c)
         {
-            if (_simpleTypes.Keys.Contains(c))
+            if (_simpleTypes.Keys.Contains((SpecialChar)c))
             {
-                var token = _simpleTypes[c];
+                var token = _simpleTypes[(SpecialChar)c];
 
                 AddToken(token);
 
@@ -195,14 +206,14 @@ namespace glox.Core
         {
             foreach (var combinationType in _combinationTypes)
             {
-                if (c != combinationType.Key)
+                if ((SpecialChar)c != combinationType.Key)
                 {
                     continue;
                 }
 
                 var token = combinationType.Value;
 
-                AddToken(Match(token.match) ? token.trueValue : token.falseValue);
+                AddToken(Match((char)token.match) ? token.trueValue : token.falseValue);
 
                 return true;
             }
@@ -216,18 +227,20 @@ namespace glox.Core
         /// <param name="limiter"></param>
         /// <returns></returns>
         /// 
-        private void AddStringToken(char limiter = '"')
+        private void AddStringToken(char limiter)
         {
-            while (Peek() != limiter && !IsAtEnd())
+            var initialLine = _line;
+
+            while (PeekNext() != limiter && !IsAtEnd())
             {
-                if (Peek() == '\n') _line++;
+                if (PeekNext() == (char)SpecialChar.BREAKLINE) _line++;
 
                 Next();
             }
 
             if (IsAtEnd())
             {
-                errors.Add($"Unterminated string at line '{_line}'");
+                Errors.Add($"Unterminated string at line '{initialLine}'");
 
                 return;
             }
@@ -236,7 +249,7 @@ namespace glox.Core
             Next();
 
             // Trim the surrounding quotes.
-            String value = _source.Substring(_start + 1, _current - 1);
+            var value = _source.Substring(_start + 1, _current - 1 - _start);
 
             AddToken(TokenType.STRING, value);
         }
@@ -248,54 +261,33 @@ namespace glox.Core
         /// 
         private void AddNumberToken()
         {
-            while (true)
+            // Consume initial digits
+            while (char.IsDigit(PeekNext()))
+                Next();
+
+            // Decimal part
+            if (PeekNext() == '.')
             {
-                var c = Peek();
+                // Consume the dot
+                Next();
 
-                if (c == '\n' || IsAtEnd())
+                if (char.IsDigit(PeekNext()))
                 {
-                    errors.Add($"Invalid character '{c}' at line '{_line}'");
-                    break;
+                    // Repeat until is not more number
+                    while (char.IsDigit(PeekNext()))
+                        Next();
                 }
+            }
 
-                if (char.IsAsciiDigit(c))
-                {
-                    Next();
+            var text = _source.Substring(_start, _current - _start + 1);
 
-                    continue;
-                }
-
-                if (c == '.' && char.IsAsciiDigit(PeekNext()))
-                {
-                    Next();
-
-                    while (char.IsAsciiDigit(Peek())) Next();
-
-                    try
-                    {
-                        AddToken(TokenType.NUMBER, double.Parse(_source.Substring(_start, _current).Trim()));
-                    }
-                    catch (OverflowException)
-                    {
-                        errors.Add($"The maximum number to float value is {double.Max}");
-                    }
-
-                    break;
-                }
-
-                if (c != '.')
-                {
-                    try
-                    {
-                        AddToken(TokenType.INTEGER_NUMBER, int.Parse(_source.Substring(_start, _current).Trim()));
-                    }
-                    catch (OverflowException)
-                    {
-                        errors.Add($"The maximum number to int value is {int.Max}");
-                    }
-
-                    break;
-                }
+            if (text.Contains('.'))
+            {
+                SecureTry(NumberType.Double, () => AddToken(TokenType.NUMBER, double.Parse(text, CultureInfo.InvariantCulture)));
+            }
+            else
+            {
+                SecureTry(NumberType.Double, () => AddToken(TokenType.INTEGER_NUMBER, int.Parse(text)));
             }
         }
 
@@ -306,9 +298,9 @@ namespace glox.Core
         /// 
         private void AddIdentifierToken()
         {
-            while (IsAlphaNumericOrUnderline(Peek())) Next();
+            while (IsAlphaNumericOrUnderline(PeekNext())) Next();
 
-            var text = _source.Substring(_start, _current);
+            var text = _source.Substring(_start, _current - _start + 1);
             var type = TokenType.IDENTIFIER;
 
             if (_identifierTypes.ContainsKey(text))
@@ -334,8 +326,6 @@ namespace glox.Core
 
             if (_source[_current++] != expected) return false;
 
-            _current++;
-
             return true;
         }
 
@@ -356,6 +346,11 @@ namespace glox.Core
         {
             _current++;
 
+            if (_current >= _source.Length)
+            {
+                return (char)SpecialChar.NULL;
+            }
+
             return _source[_current];
         }
 
@@ -365,7 +360,7 @@ namespace glox.Core
         /// <returns></returns>
         private char Peek()
         {
-            if (IsAtEnd()) return '\0';
+            if (IsAtEnd()) return (char)SpecialChar.NULL;
 
             return _source[_current];
         }
@@ -377,7 +372,7 @@ namespace glox.Core
         /// <returns></returns>
         private char PeekNext()
         {
-            if (_current + 1 >= _source.Length) return '\0';
+            if (_current + 1 >= _source.Length) return (char)SpecialChar.NULL;
             return _source[_current + 1];
         }
 
@@ -389,7 +384,7 @@ namespace glox.Core
         /// <returns></returns>
         private bool IsAlphaOrUnderline(char c)
         {
-            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+            return char.IsLetter(c) || c == '_';
         }
 
         /// <summary>
@@ -399,7 +394,7 @@ namespace glox.Core
         /// <returns></returns>
         private bool IsAlphaNumericOrUnderline(char c)
         {
-            return IsAlphaOrUnderline(c) || char.IsAsciiDigit(c);
+            return IsAlphaOrUnderline(c) || char.IsDigit(c);
         }
 
         #endregion
@@ -410,7 +405,7 @@ namespace glox.Core
         /// <param name="type"></param>
         private void AddToken(TokenType type)
         {
-            this.AddToken(type, null);
+            AddToken(type, null);
         }
 
         /// <summary>
@@ -420,9 +415,25 @@ namespace glox.Core
         /// <param name="literal"></param>
         private void AddToken(TokenType type, object? literal)
         {
-            var text = _source.Substring(_start, _current);
+            var text = _source.Substring(_start, _current - _start + 1).Trim();
 
-            this.tokens.Add(new Token(type, text, literal, _line));
+            tokens.Add(new Token(type, text, literal, _line));
+        }
+
+        private void SecureTry(NumberType type, Action conversion)
+        {
+            try
+            {
+                conversion();
+            }
+            catch (OverflowException)
+            {
+                Errors.Add($"Number of type {type} overflow at line {_line}");
+            }
+            catch (Exception)
+            {
+                Errors.Add($"Invalid number type {type} at line {_line}");
+            }
         }
     }
 }

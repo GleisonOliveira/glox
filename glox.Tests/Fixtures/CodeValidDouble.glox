@@ -1,0 +1,7 @@
+class Glox{
+    function test(){
+        var number = 123.45        ;
+        var number2 = 123.56        ;
+        var number2 = 123.78;
+    }
+}

@@ -1,0 +1,42 @@
+class Glox{
+    function test(){
+        var text = "esse é um texto";
+        var text2 = 'Esse é um texto simples';
+        var number = 123;
+        var number2 = 123.45;
+
+        print text + text2 + number + number2;
+        print 1 + 1 - 1 * 1 / 1;
+
+        if (number > number2) {
+            print('é');
+        } else {
+            print("não é");
+        }
+
+        var equal = 1 == 2;
+        var greater = 1 > 2;
+        var greaterOrEqual = 1 >= 2;
+        var less = 1 < 2;
+        var lessOrEqual = 1 <= 2;
+        var different = 1 != 2;
+
+        while(var i < 5) {
+            print i;
+
+            i = i + 1;
+        }
+    }
+
+    /* comment
+    * more
+    */
+    function test2() {
+        return true;
+    }
+
+    // comment
+    function test2() {
+        return true;
+    }
+}
